@@ -6,33 +6,32 @@ namespace App\WebSocket;
 
 use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\WebSocketClient\ClientFactory;
-use Hyperf\WebSocketServer\Sender;
-use Hyperf\WebSocketServer\Context;
+use Hyperf\Redis\RedisFactory;
 
 class HuobiWebSocket
 {
     protected const HUOBI_WS_URL = 'wss://api.huobi.pro/ws';
+
     protected $client;
+    protected $redis;
 
     public function __construct(
         protected ClientFactory $clientFactory,
         protected StdoutLoggerInterface $logger,
-        protected Sender $sender
+        RedisFactory $redisFactory
     ) {
         $this->client = $this->clientFactory->create(self::HUOBI_WS_URL);
+        $this->redis = $redisFactory->get('default');
     }
 
     public function start()
     {
-        $this->logger->info('🔥 火币 WebSocket 已启动');
+        $this->logger->info('🔥 火币行情服务已启动');
         $this->subscribe('market.btcusdt.ticker');
 
         while (true) {
             $frame = $this->client->recv();
-            if (! $frame) {
-                $this->logger->error('连接断开');
-                break;
-            }
+            if (! $frame) break;
 
             $this->handleMessage((string) $frame);
         }
@@ -58,19 +57,11 @@ class HuobiWebSocket
             return;
         }
 
-        // 推送价格给前端
+        // 把价格存入 Redis
         if (isset($json['tick'])) {
             $price = $json['tick']['close'];
-            $this->logger->info("✅ BTC价格：{$price}");
-
-            // 推送给所有前端
-            $fd = Context::get('client_fd');
-            if ($fd) {
-                $this->sender->push($fd, json_encode([
-                    'symbol' => 'BTC/USDT',
-                    'price' => $price
-                ]));
-            }
+            $this->redis->set('huobi_btc_price', $price);
+            $this->logger->info("✅ BTC实时价格：" . $price);
         }
     }
 }
