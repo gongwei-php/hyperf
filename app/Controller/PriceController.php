@@ -5,27 +5,18 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Hyperf\HttpServer\Annotation\GetMapping;
-use Hyperf\HttpServer\Annotation\RestController;
-use Hyperf\Redis\RedisFactory;
+use Hyperf\HttpServer\Annotation\Controller;
 
-#[RestController]
+#[Controller]
 class PriceController
 {
-    protected $redis;
-
-    public function __construct(RedisFactory $redisFactory)
-    {
-        $this->redis = $redisFactory->get('default');
-    }
-
     #[GetMapping('/price')]
-    public function getPrice()
+    public function index()
     {
-        $price = $this->redis->get('huobi_btc_price');
-        return [
-            'code' => 200,
-            'price' => $price ?: '0',
-            'symbol' => 'BTC/USDT'
-        ];
+        // 读取我们写入的价格
+        $file = BASE_PATH . '/public/price.json';
+        $data = file_exists($file) ? json_decode(file_get_contents($file), true) : ['price' => 0];
+
+        return $data;
     }
 }
