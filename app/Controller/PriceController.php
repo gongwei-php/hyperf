@@ -15,27 +15,20 @@ class PriceController
     #[GetMapping('/price')]
     public function index(ServerRequestInterface $request, ResponseInterface $response)
     {
-        // 跨域头（核心）
-        $response = $response
-            ->withHeader('Access-Control-Allow-Origin', '*')
+        // 跨域头
+        $response = $response->withHeader('Access-Control-Allow-Origin', '*')
             ->withHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+        // 如果是OPTIONS预检请求，直接返回
+        if (strtoupper($request->getMethod()) === 'OPTIONS') {
+            return $response->withStatus(204);
+        }
 
         // 读取价格
         $file = BASE_PATH . '/public/price.json';
         $data = file_exists($file) ? json_decode(file_get_contents($file), true) : ['price' => '0'];
 
         return $response->json($data);
-    }
-
-    // 处理 OPTIONS 预检请求，彻底解决跨域
-    #[GetMapping('/price')]
-    public function options(ResponseInterface $response)
-    {
-        return $response
-            ->withHeader('Access-Control-Allow-Origin', '*')
-            ->withHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-            ->withHeader('Access-Control-Allow-Headers', 'Content-Type')
-            ->withStatus(204);
     }
 }
