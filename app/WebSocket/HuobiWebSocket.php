@@ -10,8 +10,15 @@ use Hyperf\WebSocketClient\ClientFactory;
 class HuobiWebSocket
 {
     protected const HUOBI_WS_URL = 'wss://api.huobi.pro/ws';
-
     protected $client;
+
+    // 要订阅的币种
+    protected $symbols = [
+        'btcusdt',
+        'ethusdt',
+        'solusdt',
+        'dogeusdt'
+    ];
 
     public function __construct(
         protected ClientFactory $clientFactory,
@@ -22,8 +29,13 @@ class HuobiWebSocket
 
     public function start()
     {
-        $this->logger->info('🔥 火币行情服务已启动');
-        $this->subscribe('market.btcusdt.ticker');
+        $this->logger->info('🔥 多币种行情服务已启动');
+
+        // 订阅所有币种
+        foreach ($this->symbols as $s) {
+            $this->subscribe("market.{$s}.ticker");
+            $this->logger->info("📡 已订阅：{$s}");
+        }
 
         while (true) {
             $frame = $this->client->recv();
@@ -39,7 +51,6 @@ class HuobiWebSocket
             'sub' => $channel,
             'id' => uniqid()
         ]));
-        $this->logger->info("📡 已订阅：{$channel}");
     }
 
     protected function handleMessage(string $data)
@@ -47,24 +58,31 @@ class HuobiWebSocket
         $decode = gzdecode($data);
         $json = json_decode($decode, true);
 
+        // 心跳
         if (isset($json['ping'])) {
             $this->client->push(json_encode(['pong' => $json['ping']]));
             return;
         }
 
-        if (isset($json['tick'])) {
+        // 处理行情数据
+        if (isset($json['tick']) && isset($json['ch'])) {
+            $symbol = str_replace('market.', '', str_replace('.ticker', '', $json['ch']));
             $price = $json['tick']['close'];
-            $this->logger->info("✅ BTC 实时价格：" . $price);
 
-            // 自动创建目录并保存价格
-            $dir = BASE_PATH . '/public';
-            if (!is_dir($dir)) {
-                mkdir($dir, 0777, true);
+            $this->logger->info("✅ {$symbol} = {$price}");
+
+            // 读取所有价格
+            $file = BASE_PATH . '/public/prices.json';
+            $prices = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+            $prices[$symbol] = $price;
+            $prices['time'] = date('Y-m-d H:i:s');
+
+            // 自动创建目录
+            if (!is_dir(BASE_PATH . '/public')) {
+                mkdir(BASE_PATH . '/public', 0777, true);
             }
-            file_put_contents($dir . '/price.json', json_encode([
-                'price' => $price,
-                'time' => date('Y-m-d H:i:s')
-            ]));
+
+            file_put_contents($file, json_encode($prices));
         }
     }
 }
