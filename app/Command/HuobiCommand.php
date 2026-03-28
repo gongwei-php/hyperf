@@ -13,7 +13,7 @@ use Psr\Container\ContainerInterface;
 class HuobiCommand extends HyperfCommand
 {
     protected ?string $name = 'huobi:start';
-    protected string $description = '启动火币 WebSocket 订阅';
+    protected string $description = '火币价格推送';
 
     public function __construct(private ContainerInterface $container)
     {
@@ -22,7 +22,6 @@ class HuobiCommand extends HyperfCommand
 
     public function handle()
     {
-        $huobi = $this->container->get(HuobiWebSocket::class);
-        $huobi->start();
+        $this->container->get(HuobiWebSocket::class)->start();
     }
 }
