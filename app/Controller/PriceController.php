@@ -6,26 +6,36 @@ namespace App\Controller;
 
 use Hyperf\HttpServer\Annotation\GetMapping;
 use Hyperf\HttpServer\Annotation\Controller;
+use Hyperf\HttpServer\Contract\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 #[Controller]
 class PriceController
 {
-    #[GetMapping(path: '/price', options: ['method' => ['GET', 'OPTIONS']])]
-    public function index()
+    #[GetMapping('/price')]
+    public function index(ServerRequestInterface $request, ResponseInterface $response)
     {
-        // 强制发送跨域头
-        header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Methods: GET, OPTIONS');
-        header('Access-Control-Allow-Headers: *');
+        // 跨域头（核心）
+        $response = $response
+            ->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-            exit;
-        }
-
+        // 读取价格
         $file = BASE_PATH . '/public/price.json';
-        $data = file_exists($file) ? json_decode(file_get_contents($file), true) : ['price' => 0];
+        $data = file_exists($file) ? json_decode(file_get_contents($file), true) : ['price' => '0'];
 
-        echo json_encode($data);
-        exit;
+        return $response->json($data);
+    }
+
+    // 处理 OPTIONS 预检请求，彻底解决跨域
+    #[GetMapping('/price')]
+    public function options(ResponseInterface $response)
+    {
+        return $response
+            ->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type')
+            ->withStatus(204);
     }
 }
