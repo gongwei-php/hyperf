@@ -12,15 +12,14 @@ use Psr\Container\ContainerInterface;
 #[Command]
 class HuobiCommand extends HyperfCommand
 {
-    // 🔥 这一行必须和父类完全一致
+    // 严格匹配父类定义
     protected ?string $name = 'huobi:start';
+    protected string $description = '启动火币 WebSocket 订阅';
 
-    protected string $description = '启动火币WebSocket行情订阅';
-
-    public function __construct(ContainerInterface $container)
+    // 构造函数注入 + 定义属性
+    public function __construct(private ContainerInterface $container)
     {
         parent::__construct();
-        $this->container = $container;
     }
 
     public function handle()
