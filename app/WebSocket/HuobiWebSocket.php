@@ -18,6 +18,7 @@ class HuobiWebSocket
         protected ClientFactory $clientFactory,
         protected StdoutLoggerInterface $logger
     ) {
+        // 创建时自动连接，不需要手动 connect()
         $this->client = $this->clientFactory->create(self::HUOBI_WS_URL);
     }
 
@@ -25,18 +26,15 @@ class HuobiWebSocket
     {
         $this->logger->info('🔥 开始连接 火币 WebSocket API');
 
-        // 连接
-        $this->client->connect();
-
-        // 订阅
+        // 发送订阅
         $this->subscribe('market.btcusdt.ticker');
 
-        // 循环接收消息（Hyperf 官方正确写法）
+        // 循环接收消息
         while (true) {
-            // 读取消息
             $data = $this->client->recv();
-            if ($data === '' || $data === null) {
-                $this->logger->error('WebSocket 断开连接');
+
+            if ($data === null || $data === '') {
+                $this->logger->error('WebSocket 连接断开');
                 break;
             }
 
@@ -56,7 +54,6 @@ class HuobiWebSocket
 
     protected function handleMessage(string $data)
     {
-        // 火币数据 gzip 解压
         $decode = gzdecode($data);
         $json = json_decode($decode, true);
 
@@ -66,11 +63,11 @@ class HuobiWebSocket
             return;
         }
 
-        // 输出实时价格
+        // 输出价格
         if (isset($json['tick'])) {
             $symbol = str_replace(['market.', '.ticker'], '', $json['ch'] ?? '');
             $price = $json['tick']['close'];
-            $this->logger->info("✅ {$symbol} 价格：{$price} USDT");
+            $this->logger->info("✅ {$symbol} 实时价格：{$price} USDT");
         }
     }
 }
