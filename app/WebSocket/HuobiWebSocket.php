@@ -25,24 +25,23 @@ class HuobiWebSocket
     {
         $this->logger->info('🔥 开始连接 火币 WebSocket API');
 
-        $this->client->on('open', function () {
-            $this->logger->info('✅ 火币 WebSocket 连接成功');
-            $this->subscribe('market.btcusdt.ticker');
-        });
-
-        $this->client->on('message', function ($data) {
-            $this->handleMessage($data);
-        });
-
-        $this->client->on('close', function () {
-            $this->logger->warning('❌ 连接关闭');
-        });
-
-        $this->client->on('error', function ($e) {
-            $this->logger->error('❌ 连接错误：' . $e);
-        });
-
+        // 连接
         $this->client->connect();
+
+        // 订阅
+        $this->subscribe('market.btcusdt.ticker');
+
+        // 循环接收消息（Hyperf 官方正确写法）
+        while (true) {
+            // 读取消息
+            $data = $this->client->recv();
+            if ($data === '' || $data === null) {
+                $this->logger->error('WebSocket 断开连接');
+                break;
+            }
+
+            $this->handleMessage($data);
+        }
     }
 
     protected function subscribe(string $channel)
@@ -57,18 +56,21 @@ class HuobiWebSocket
 
     protected function handleMessage(string $data)
     {
+        // 火币数据 gzip 解压
         $decode = gzdecode($data);
         $json = json_decode($decode, true);
 
+        // 心跳回复
         if (isset($json['ping'])) {
             $this->client->push(json_encode(['pong' => $json['ping']]));
             return;
         }
 
-        if (str_contains($json['ch'] ?? '', '.ticker')) {
-            $symbol = str_replace(['market.', '.ticker'], '', $json['ch']);
+        // 输出实时价格
+        if (isset($json['tick'])) {
+            $symbol = str_replace(['market.', '.ticker'], '', $json['ch'] ?? '');
             $price = $json['tick']['close'];
-            $this->logger->info("【{$symbol}】实时价格：{$price} USDT");
+            $this->logger->info("✅ {$symbol} 价格：{$price} USDT");
         }
     }
 }
