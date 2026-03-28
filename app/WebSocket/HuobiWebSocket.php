@@ -55,6 +55,12 @@ class HuobiWebSocket
         if (isset($json['tick'])) {
             $price = $json['tick']['close'];
             $this->logger->info("✅ BTC 实时价格：" . $price);
+
+            // 👇 就加这一行（把价格写入文件）
+            file_put_contents(BASE_PATH . '/public/price.json', json_encode([
+                'price' => $price,
+                'time' => date('Y-m-d H:i:s')
+            ]));
         }
     }
 }
