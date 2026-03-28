@@ -13,7 +13,7 @@ use Psr\Container\ContainerInterface;
 class HuobiCommand extends HyperfCommand
 {
     protected ?string $name = 'huobi:start';
-    protected string $description = '火币价格推送';
+    protected string $description = '火币行情订阅';
 
     public function __construct(private ContainerInterface $container)
     {
