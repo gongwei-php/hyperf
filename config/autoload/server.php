@@ -9,6 +9,7 @@ declare(strict_types=1);
  * @contact  group@hyperf.io
  * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
  */
+
 use Hyperf\Server\Event;
 use Hyperf\Server\Server;
 use Swoole\Constant;
@@ -26,8 +27,10 @@ return [
                 Event::ON_REQUEST => [Hyperf\HttpServer\Server::class, 'onRequest'],
             ],
             'options' => [
-                // Whether to enable request lifecycle event
                 'enable_request_lifecycle' => false,
+                // 👇 下面这两行是关键，开启静态文件访问
+                'document_root' => BASE_PATH . '/public',
+                'enable_static_handler' => true,
             ],
         ],
     ],
