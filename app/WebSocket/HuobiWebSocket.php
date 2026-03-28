@@ -28,15 +28,16 @@ class HuobiWebSocket
         $this->subscribe('market.btcusdt.ticker');
 
         while (true) {
-            /** @var Frame $data */
-            $data = $this->client->recv();
+            /** @var Frame $frame */
+            $frame = $this->client->recv();
 
-            if (! $data instanceof Frame || $data->getPayload() === '') {
+            if (! $frame) {
                 $this->logger->error('WebSocket 断开连接');
                 break;
             }
 
-            $this->handleMessage($data);
+            // 🔥 关键修复：直接把对象转字符串，或直接用 (string)$frame
+            $this->handleMessage((string) $frame);
         }
     }
 
@@ -50,18 +51,19 @@ class HuobiWebSocket
         $this->logger->info("📡 已订阅：{$channel}");
     }
 
-    // 接收 Frame 类型
-    protected function handleMessage(Frame $frame)
+    // 直接接收字符串
+    protected function handleMessage(string $data)
     {
-        $data = $frame->getPayload(); // 从 Frame 中获取真实数据
         $decode = gzdecode($data);
         $json = json_decode($decode, true);
 
+        // 心跳
         if (isset($json['ping'])) {
             $this->client->push(json_encode(['pong' => $json['ping']]));
             return;
         }
 
+        // 输出价格
         if (isset($json['tick'])) {
             $symbol = str_replace(['market.', '.ticker'], '', $json['ch'] ?? '');
             $price = $json['tick']['close'];
